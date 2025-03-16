@@ -5,5 +5,9 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "mcp>=1.4.1",
     "pymongo>=4.11.2",
 ]
+
+[project.scripts]
+mongodb-mcp = "mongodb_mcp.server:main"

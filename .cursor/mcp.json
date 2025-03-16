@@ -1,0 +1,8 @@
+{
+    "mcpServers": {
+      "mongodb-mcp": {
+        "command": "mongodb-mcp",
+        "args": []
+      }
+    }
+  }
