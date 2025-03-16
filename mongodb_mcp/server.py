@@ -1,24 +1,15 @@
 from mcp.server.fastmcp import FastMCP
 from pymongo import MongoClient
-import json
-from bson import ObjectId
+
 
 mcp = FastMCP("MongoDB MCP")
 client = MongoClient('mongodb://localhost:27017/')
+db = client["main-db"]  # Hardcoded database name
 
 
 @mcp.tool()
 def get_collection_names() -> list[str]:
-    db_names = client.list_database_names()
-    collections = []
-    
-    for db_name in db_names:
-        if db_name not in ['admin', 'local', 'config']:  # Skip system databases
-            db = client[db_name]
-            for collection in db.list_collection_names():
-                collections.append(f"{db_name}.{collection}")
-    
-    return collections
+    return db.list_collection_names()
 
 
 @mcp.tool()
@@ -27,7 +18,7 @@ def query_collection(collection_name: str, query: dict = None, limit: int = 10) 
     Query documents from a MongoDB collection.
     
     Args:
-        collection_name: The name of the collection in format 'database.collection'
+        collection_name: The name of the collection
         query: MongoDB query filter in JSON format (default: empty query that matches all documents)
         limit: Maximum number of documents to return (default: 10)
         
@@ -38,9 +29,7 @@ def query_collection(collection_name: str, query: dict = None, limit: int = 10) 
         query = {}
         
     try:
-        db_name, coll_name = collection_name.split('.')
-        db = client[db_name]
-        collection = db[coll_name]
+        collection = db[collection_name]
         
         # Execute the query and convert results to list of dicts
         cursor = collection.find(query).limit(limit)
@@ -62,16 +51,14 @@ def insert_document(collection_name: str, document: dict) -> dict:
     Insert a document into a MongoDB collection.
     
     Args:
-        collection_name: The name of the collection in format 'database.collection'
+        collection_name: The name of the collection
         document: Document to insert
         
     Returns:
         Result of the insert operation including the inserted ID
     """
     try:
-        db_name, coll_name = collection_name.split('.')
-        db = client[db_name]
-        collection = db[coll_name]
+        collection = db[collection_name]
         
         result = collection.insert_one(document)
         
@@ -92,7 +79,7 @@ def update_documents(collection_name: str, filter_query: dict, update: dict) -> 
     Update documents in a MongoDB collection.
     
     Args:
-        collection_name: The name of the collection in format 'database.collection'
+        collection_name: The name of the collection
         filter_query: Query to select documents to update
         update: Update operations to apply (using MongoDB update operators)
         
@@ -100,9 +87,7 @@ def update_documents(collection_name: str, filter_query: dict, update: dict) -> 
         Result of the update operation
     """
     try:
-        db_name, coll_name = collection_name.split('.')
-        db = client[db_name]
-        collection = db[coll_name]
+        collection = db[collection_name]
         
         result = collection.update_many(filter_query, update)
         
@@ -124,22 +109,70 @@ def delete_documents(collection_name: str, filter_query: dict) -> dict:
     Delete documents from a MongoDB collection.
     
     Args:
-        collection_name: The name of the collection in format 'database.collection'
+        collection_name: The name of the collection
         filter_query: Query to select documents to delete
         
     Returns:
         Result of the delete operation
     """
     try:
-        db_name, coll_name = collection_name.split('.')
-        db = client[db_name]
-        collection = db[coll_name]
+        collection = db[collection_name]
         
         result = collection.delete_many(filter_query)
         
         return {
             "success": True,
             "deleted_count": result.deleted_count
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+
+@mcp.tool()
+def create_collection(collection_name: str) -> dict:
+    """
+    Create a new collection.
+    
+    Args:
+        collection_name: The name of the collection to create
+        
+    Returns:
+        Result of the create operation
+    """
+    try:
+        db.create_collection(collection_name)
+        
+        return {
+            "success": True,
+            "message": f"Collection '{collection_name}' created"
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+
+@mcp.tool()
+def delete_collection(collection_name: str) -> dict:
+    """
+    Delete a collection.
+    
+    Args:
+        collection_name: The name of the collection to delete
+        
+    Returns:
+        Result of the delete operation
+    """
+    try:
+        db[collection_name].drop()
+        
+        return {
+            "success": True,
+            "message": f"Collection '{collection_name}' deleted"
         }
     except Exception as e:
         return {
